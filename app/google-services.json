@@ -1,0 +1,141 @@
+{
+  "project_info": {
+    "project_number": "405058083725",
+    "project_id": "default-demo-app-34c9d"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:405058083725:android:c6607182b887349c",
+        "android_client_info": {
+          "package_name": "app.valet.customer.customervaletapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "405058083725-nfuk403ikcu2ab6e6bcjb78oujl4kv9q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.valet.customer.customervaletapp",
+            "certificate_hash": "6E45FE15EEBF7FA43314760F3DD1974305FBC529"
+          }
+        },
+        {
+          "client_id": "405058083725-7rvu8qjrkkt2ut01093eshvgb6gm78dj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZ9mGjtCpQBICJCJhl3XHzqMreua9ZTvY"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 1
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:405058083725:android:27d689d63f1b7a06",
+        "android_client_info": {
+          "package_name": "com.google.samples.quickstart.signin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "405058083725-7rvu8qjrkkt2ut01093eshvgb6gm78dj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZ9mGjtCpQBICJCJhl3XHzqMreua9ZTvY"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 1
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:405058083725:android:f36173e948059ccb",
+        "android_client_info": {
+          "package_name": "gcm.play.android.samples.com.gcmquickstart"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "405058083725-7rvu8qjrkkt2ut01093eshvgb6gm78dj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZ9mGjtCpQBICJCJhl3XHzqMreua9ZTvY"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 1
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:405058083725:android:e5afd5b42932d546",
+        "android_client_info": {
+          "package_name": "app.valet.customer.gcm"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "405058083725-7rvu8qjrkkt2ut01093eshvgb6gm78dj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZ9mGjtCpQBICJCJhl3XHzqMreua9ZTvY"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 1
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
