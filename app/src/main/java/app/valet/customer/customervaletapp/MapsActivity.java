@@ -40,7 +40,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-import app.valet.customer.customervaletapp.app.valet.customer.customervaletapp.widget.state.SearchBoxState;
+import app.valet.customer.customervaletapp.widget.state.SearchBoxState;
 
 public class MapsActivity extends FragmentActivity implements LocationListener/*, PlaceSelectionListener */{
     private int PLACE_AUTOCOMPLETE_REQUEST_CODE = 1;

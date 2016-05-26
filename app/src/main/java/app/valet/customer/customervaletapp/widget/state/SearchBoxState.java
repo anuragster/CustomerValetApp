@@ -1,4 +1,4 @@
-package app.valet.customer.customervaletapp.app.valet.customer.customervaletapp.widget.state;
+package app.valet.customer.customervaletapp.widget.state;
 
 import com.google.android.gms.maps.model.LatLng;
 
