@@ -1,25 +1,36 @@
 package app.valet.customer.customervaletapp.widget.state;
 
-import com.google.android.gms.maps.model.LatLng;
+import java.io.Serializable;
 
 /**
  * Created by ASAX on 22-05-2016.
  */
-public class SearchBoxState {
-    private LatLng latLng;
+public class SearchBoxState implements Serializable{
+    //private LatLng latLng;
+    private double latitude;
+    private double longitude;
     private String address;
 
-    public SearchBoxState(LatLng latLng, String address){
-        this.latLng = latLng;
+    public SearchBoxState(double latitude, double longitude, String address){
+        this.latitude = latitude;
+        this.longitude = longitude;
         this.address = address;
     }
 
-    public LatLng getLatLng(){
-        return this.latLng;
+    public double getLatitude(){
+        return this.latitude;
     }
 
-    public void setLatLng(LatLng latlng){
-        this.latLng = latlng;
+    public void setLatitude(double latitude){
+        this.latitude = latitude;
+    }
+
+    public double getLongitude(){
+        return this.longitude;
+    }
+
+    public void setLongitude(double longitude){
+        this.longitude = longitude;
     }
 
     public String getAddress(){
@@ -32,6 +43,6 @@ public class SearchBoxState {
 
     @Override
     public String toString(){
-        return "LatLng - " + this.latLng + ", and address - " + this.address;
+        return "LatLng - (lat -" + this.latitude+ " , lng - " + this.longitude+ "), and address - " + this.address;
     }
 }

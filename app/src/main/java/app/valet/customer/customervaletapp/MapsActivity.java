@@ -1,6 +1,7 @@
 package app.valet.customer.customervaletapp;
 
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -9,7 +10,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.ResultReceiver;
@@ -24,12 +24,12 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
 import com.google.android.gms.common.GooglePlayServicesRepairableException;
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlaceAutocomplete;
@@ -42,32 +42,41 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 import app.valet.customer.customervaletapp.widget.state.SearchBoxState;
 
-public class MapsActivity extends FragmentActivity implements LocationListener/*, PlaceSelectionListener */{
+public class MapsActivity extends FragmentActivity /*, PlaceSelectionListener */{
+
+    private static final String TAG = "TAG";
+    private final String IS_PLACE_SELECTED_NAME = "isPlaceSelected";
+    private final String SEARCH_BOX_STATE_NAME = "searchBoxState";
+    private final String LAST_LOCATION_ADDRESS_NAME = "mLastLocationAddress";
     private int PLACE_AUTOCOMPLETE_REQUEST_CODE = 1;
     private int MY_PERMISSION_REQUEST_ACCESS_FINE_LOCATION = 2;
-    private GoogleMap map;
-    private LocationManager locationManager;
-    private static final long MIN_TIME = 0/*400*/;
-    private static final float MIN_DISTANCE = 0/*1000*/;
-    private static final String TAG = "TAG";
-    private TextView textView;
-    private Button parkNow;
+    private GoogleApiClient mGoogleApiClient;
+    private GoogleApiClient.ConnectionCallbacks callbacks;
+    private GoogleApiClient.OnConnectionFailedListener connectionFailedListener;
+    public GoogleMap map;
+    //private LocationCoordinator locationManager;
+    public TextView mTextView;
+    private Button mParkNow;
     private ImageView myLocation;
-    private boolean isPlaceSelected;
-    protected Location mLastLocation;
-    protected String mLastLocationAddress;
+    public boolean isPlaceSelected; // Saved state
+    //protected Location mLastLocation;
+    protected String mLastLocationAddress; // Saved state
+    private Place mPlaceSelected;
     //private Location mUserSelectedLocation;
-    private SearchBoxState currentSearchBoxState;
+    public SearchBoxState currentSearchBoxState; // Saved state
     private Location textBoxLocation;
     //private String mAddressOutput;
-    private AddressResultReceiver mResultReceiver;
+    public AddressResultReceiver mResultReceiver;
     private LocationListener listener;
+    private boolean isMapScreenLoaded;
+    private Activity mapActivity;
 
     // GCM starts
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
     private BroadcastReceiver mRegistrationBroadcastReceiver;
     private boolean isReceiverRegistered;
     // GCM ends
+
 
     class AddressResultReceiver extends ResultReceiver {
         private Creator CREATOR;
@@ -88,69 +97,33 @@ public class MapsActivity extends FragmentActivity implements LocationListener/*
             if (resultCode == Constants.SUCCESS_RESULT) {
                 //showToast(getString(R.string.address_found));
                 //Log.e("LOGCAT", "mAddressOutput Success - " + addressOutput);
-                mLastLocationAddress = addressOutput;
-                textView.setText(addressOutput);
-                currentSearchBoxState.setAddress(addressOutput);
+                ((MapsActivity) mapActivity).mLastLocationAddress = addressOutput;
+                ((MapsActivity) mapActivity).mTextView.setText(addressOutput);
+                ((MapsActivity) mapActivity).currentSearchBoxState.setAddress(addressOutput);
             }
 
         }
     }
 
-    protected void startIntentService() {
-        Intent intent = new Intent(this, FetchAddressIntentService.class);
-        intent.putExtra(Constants.RECEIVER, mResultReceiver);
-        intent.putExtra(Constants.LOCATION_DATA_EXTRA, mLastLocation);
-        startService(intent);
-    }
 
-
-    @TargetApi(23)
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_maps);
-        map = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getMap();
-        mResultReceiver = new AddressResultReceiver(new Handler());
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-
-        //Toast.makeText(getApplicationContext(), "test", 1000).show();
-
-        if (ContextCompat.checkSelfPermission(MapsActivity.this,
-                android.Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-
-            if (ActivityCompat.shouldShowRequestPermissionRationale(MapsActivity.this,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION)) {
-
-                checkSelfPermission("You have to accept to enjoy the most hings in this app");
-            } else {
-                ActivityCompat.requestPermissions(MapsActivity.this,
-                        new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
-                        MY_PERMISSION_REQUEST_ACCESS_FINE_LOCATION);
-
-            }
-        }else if(map!=null){
-            //locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME, MIN_DISTANCE, this); //You can also use LocationManager.GPS_PROVIDER and LocationManager.PASSIVE_PROVIDER
-            //map.setMyLocationEnabled(true);
-            //map.animateCamera(CameraUpdateFactory.zoomTo(170.0f));
-            //map.setPadding(0, dpToPx(480), 0, 0);
-        }
-
-        this.textView = (TextView) findViewById(R.id.email_address);
-        this.textView.setOnClickListener(new View.OnClickListener() {
+    private void initMapUI(){
+        //setContentView(R.layout.activity_maps);
+        this.mTextView = (TextView) findViewById(R.id.email_address);
+        this.mTextView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 launchGoogleMapSearchOverlay();
             }
         });
-        this.parkNow = (Button) findViewById(R.id.park_now);
-        this.parkNow.setOnClickListener(new View.OnClickListener(){
+        this.mParkNow = (Button) findViewById(R.id.park_now);
+        this.mParkNow.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v){
                 Log.e(TAG, "Button Clicked. Parameters - " + currentSearchBoxState);
+                (new ParkNowClickHTTPPost()).execute();
             }
         });
-        this.listener = this;
+        updateUI();
         this.myLocation = (ImageView) findViewById(R.id.my_location);
         this.myLocation.setOnClickListener(new View.OnClickListener(){
             @Override
@@ -158,18 +131,53 @@ public class MapsActivity extends FragmentActivity implements LocationListener/*
                 Log.e(TAG, "My Location clicked!!");
                 isPlaceSelected = false;
                 if(checkPermission()){
-                    if(mLastLocation!=null) {
-                        map.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()), 15));
-                        textView.setText(mLastLocationAddress);
-                    }{
+                    Location location = LocationCoordinator.getInstance(mapActivity).mLastLocation;
+                    if(location!=null) {
+                        map.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 15));
+                        mTextView.setText(mLastLocationAddress);
+                    }else{
                         Log.e(TAG, "mLastLocation is null!!");
                     }
-                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME, MIN_DISTANCE, listener);
-                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_TIME, MIN_DISTANCE, listener);
+                    LocationCoordinator.getInstance(mapActivity).requestLocationUpdates();
                 }
             }
         });
-        //launchGoogleMapSearchOverlay();
+        isMapScreenLoaded = true;
+    }
+
+    private void handleLocationChanged(Location location){
+        if(location == null){
+            Log.e(TAG, "Location is null");
+            return;
+        }
+        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 15);
+        map.animateCamera(cameraUpdate);
+
+        currentSearchBoxState = new SearchBoxState(location.getLatitude(), location.getLongitude(), "");
+        LocationCoordinator.getInstance(this).startIntentService();
+    }
+
+    @TargetApi(23)
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        Log.e(TAG, "onCreate!!");
+        mapActivity = this;
+        LocationCoordinator lc = LocationCoordinator.getInstance(this);
+
+        //setContentView(R.layout.activity_splash);
+        setContentView(R.layout.activity_maps);
+        initMapUI();
+        mResultReceiver = new AddressResultReceiver(new Handler());
+        map = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getMap();
+        //mResultReceiver = new AddressResultReceiver(new Handler());
+        //locationManager = (LocationCoordinator) getSystemService(Context.LOCATION_SERVICE);
+
+        //Toast.makeText(getApplicationContext(), "test", 1000).show();
+
+        updateValuesFromBundle(savedInstanceState);
+        //this.listener = this;
 
         // GCM starts
         mRegistrationBroadcastReceiver = new BroadcastReceiver() {
@@ -194,6 +202,83 @@ public class MapsActivity extends FragmentActivity implements LocationListener/*
             startService(intent);
         }
         // GCM ends
+
+        // Initializing google API client
+        /*if(callbacks == null){
+            callbacks = new GoogleApiClient.ConnectionCallbacks() {
+                @Override
+                public void onConnected(@Nullable Bundle bundle) {
+                    Log.e(TAG, "onConnected");
+                    if(checkPermission()) {
+                        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
+                                mGoogleApiClient);
+                        if (mLastLocation != null) {
+                            app.valet.customer.customervaletapp.LocationCoordinator.getInstance(mapActivity).handleLocationChanged();
+                        }
+                    }
+                }
+
+                @Override
+                public void onConnectionSuspended(int i) {
+                    Log.e(TAG, "onConnectionSuspended");
+                }
+            };
+        }
+
+        if(connectionFailedListener == null){
+            connectionFailedListener = new GoogleApiClient.OnConnectionFailedListener() {
+                @Override
+                public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+                    Log.e(TAG, "onConnectionFailed");
+                }
+            };
+        }
+
+        if(mGoogleApiClient == null){
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
+                    .addConnectionCallbacks(callbacks)
+                    .addOnConnectionFailedListener(connectionFailedListener)
+                    .addApi(LocationServices.API)
+                    .build();
+        }*/
+        handleLocationChanged(lc.getmLastLocation());
+    }
+
+    private void updateValuesFromBundle(Bundle savedInstanceState){
+        Log.e(TAG, "updateValues is called!!");
+        if(savedInstanceState!=null){
+            Log.e(TAG, "savedInstance state is not null");
+            if(savedInstanceState.keySet().contains(IS_PLACE_SELECTED_NAME)){
+                isPlaceSelected = savedInstanceState.getBoolean(IS_PLACE_SELECTED_NAME);
+                Log.e(TAG, "Retrieved isPlaceSelected - " + isPlaceSelected);
+            }
+            if(savedInstanceState.keySet().contains(SEARCH_BOX_STATE_NAME)){
+                currentSearchBoxState = (SearchBoxState) savedInstanceState.getSerializable(SEARCH_BOX_STATE_NAME);
+                Log.e(TAG, "Retrieved searchBoxState - " + currentSearchBoxState);
+            }
+            if(savedInstanceState.keySet().contains(LAST_LOCATION_ADDRESS_NAME)){
+                mLastLocationAddress = savedInstanceState.getString(LAST_LOCATION_ADDRESS_NAME);
+                Log.e(TAG, "Retrieved mLastLocationAddress - " + mLastLocationAddress);
+            }
+            updateUI();
+        }
+    }
+
+    private void updateUI(){
+        if(mTextView!= null && currentSearchBoxState!=null) {
+            mTextView.setText(currentSearchBoxState.getAddress());
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        Log.e(TAG, "onSaveInstanceState!!");
+
+        savedInstanceState.putBoolean(IS_PLACE_SELECTED_NAME, isPlaceSelected);
+        savedInstanceState.putSerializable(SEARCH_BOX_STATE_NAME, currentSearchBoxState);
+        savedInstanceState.putString(LAST_LOCATION_ADDRESS_NAME, mLastLocationAddress);
+
+        super.onSaveInstanceState(savedInstanceState);
     }
 
     /**
@@ -235,22 +320,17 @@ public class MapsActivity extends FragmentActivity implements LocationListener/*
         super.onResume();
         Log.e(TAG, "onResume");
         registerReceiver();
-        if(checkPermission()) {
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME, MIN_DISTANCE, this);
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_TIME, MIN_DISTANCE, this);
-        }
+        LocationCoordinator.getInstance(this).requestLocationUpdates();
     }
 
     @Override
     protected void onPause(){
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mRegistrationBroadcastReceiver);
-        isReceiverRegistered = false;
         super.onPause();
+        //LocalBroadcastManager.getInstance(this).unregisterReceiver(mRegistrationBroadcastReceiver);
+        //isReceiverRegistered = false;
         Log.e(TAG, "onPause");
-        if(checkPermission()) {
-            locationManager.removeUpdates(this);
-            locationManager.removeUpdates(this);
-        }
+        // Stop location updates to save battery power.
+        LocationCoordinator.getInstance(this).removeLocationUpdates();
     }
 
     private void launchGoogleMapSearchOverlay(){
@@ -294,53 +374,9 @@ public class MapsActivity extends FragmentActivity implements LocationListener/*
         return false;
     }
 
-    @TargetApi(23)
-    @Override
-    public void onLocationChanged(Location location) {
-        if(this.isPlaceSelected){
-            return;
-        }
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 15);
-        map.animateCamera(cameraUpdate);
-        mLastLocation = location;
-        currentSearchBoxState = new SearchBoxState(new LatLng(location.getLatitude(), location.getLongitude()), "");
-        //Log.e(TAG, "Location changed. Starting intent service.");
-        startIntentService();
-        //this.textView.setText("address");
-        if (ContextCompat.checkSelfPermission(MapsActivity.this,
-                android.Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
 
-            if (ActivityCompat.shouldShowRequestPermissionRationale(MapsActivity.this,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION)) {
 
-                checkSelfPermission("You have to accept to enjoy the most hings in this app");
-            } else {
-                ActivityCompat.requestPermissions(MapsActivity.this,
-                        new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
-                        MY_PERMISSION_REQUEST_ACCESS_FINE_LOCATION);
 
-            }
-        }else if(map!=null) {
-            //locationManager.removeUpdates(this);
-        }
-    }
-
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) { }
-
-    @Override
-    public void onProviderEnabled(String provider) {
-        Log.e(TAG, "Provider enabled");
-        Toast.makeText(getApplicationContext(), "Provider enabled", Toast.LENGTH_SHORT).show();
-    }
-
-    @Override
-    public void onProviderDisabled(String provider) {
-        Log.e(TAG, "Provider disabled");
-        Toast.makeText(getApplicationContext(), "Provider disabled", Toast.LENGTH_SHORT).show();
-    }
 
     // Invoked whenever user searches for a location and selects it.
     @Override
@@ -348,16 +384,15 @@ public class MapsActivity extends FragmentActivity implements LocationListener/*
         if (requestCode == PLACE_AUTOCOMPLETE_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
                 this.isPlaceSelected = true;
-                if(this.checkPermission()){
-                    locationManager.removeUpdates(this);
-                    locationManager.removeUpdates(this);
-                }
+                LocationCoordinator.getInstance(mapActivity).removeLocationUpdates();
                 Place place = PlaceAutocomplete.getPlace(this, data);
+                mPlaceSelected = place;
                 //Log.e("LOGTAG", "Setting address - " + place.getName());
                 //mUserSelectedLocation = new Location();
-                textView.setText(place.getName());
+                mTextView.setText(place.getName());
                 currentSearchBoxState.setAddress(place.getName().toString());
-                currentSearchBoxState.setLatLng(place.getLatLng());
+                currentSearchBoxState.setLatitude(place.getLatLng().latitude);
+                currentSearchBoxState.setLongitude(place.getLatLng().longitude);
                 map.addMarker(new MarkerOptions().position(place.getLatLng()).title(place.getName().toString()));
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(place.getLatLng(), 15));
                 //Log.e(TAG, "Place: " + place.getName());
